@@ -1,0 +1,24 @@
+// The Worker that serves the notebook's web version. Cloudflare's Workers Builds deploys it on
+// every push to main. Setup steps are in the "Web version" section of scripts.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "notes",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Every request goes through worker.js, which checks the Access token before serving anything.
+    "run_worker_first": true,
+    "not_found_handling": "404-page"
+  },
+  // Only the workers.dev address, which Cloudflare Access protects. No per-version preview addresses.
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    // From Zero Trust: the team domain (Settings > Custom Pages) and the Access app's AUD tag.
+    // While these are empty, the Worker turns every request away.
+    "TEAM_DOMAIN": "",
+    "POLICY_AUD": ""
+  }
+}

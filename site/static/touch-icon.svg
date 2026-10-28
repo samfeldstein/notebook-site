@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!-- The home-screen icon: the pad's grid paper with the header's orange ring. iOS rounds the corners. -->
+  <defs>
+    <pattern id="grid" width="18" height="18" patternUnits="userSpaceOnUse">
+      <path d="M18 0H0V18" fill="none" stroke="#d8e3cc" stroke-width="1.5"/>
+    </pattern>
+  </defs>
+  <rect width="180" height="180" fill="#eef3e6"/>
+  <rect width="180" height="180" fill="url(#grid)"/>
+  <circle cx="90" cy="90" r="44" fill="none" stroke="#b4441f" stroke-width="14"/>
+</svg>

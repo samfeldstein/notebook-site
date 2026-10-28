@@ -1,0 +1,1257 @@
+/* The notebook's web version: Engineering Pad. Phone first; one column.
+   Green computation paper with the grid printed faintly behind the text, a drawing's title block on
+   each note, and numbered sections. Dark mode is a blueprint. */
+
+/* Self-hosted fonts (latin), from Fontsource. The license is next to the files. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("fonts/ibm-plex-sans-latin-400-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("fonts/ibm-plex-sans-latin-600-italic.woff2") format("woff2");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Condensed";
+  src: url("fonts/ibm-plex-sans-condensed-latin-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Condensed";
+  src: url("fonts/ibm-plex-sans-condensed-latin-600-normal.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light dark;
+  accent-color: var(--accent);
+  --bg: #eef3e6;
+  --surface: #f7faf2;
+  --text: #17241b;
+  --muted: #4c5d50;
+  /* Dividers only; they're decorative, so they can be faint. */
+  --line: #9db58a;
+  --accent: #1f5a33;
+  /* Links to notes not written yet: readable (≥4.5:1), told apart by color alone. */
+  --missing: #5f7564;
+  /* Form field and checkbox borders: ≥3:1 on the page and on --surface. */
+  --field-border: #5f7564;
+  --focus: var(--accent);
+  --scroll-shadow: rgb(0 0 0 / 0.16);
+  /* Section numbers and markers, heavy rules, the printed grid, code. */
+  --number: #b4441f;
+  --rule: #6f8f62;
+  --grid: #e5ecdd;
+  --grid-major: #d8e3cc;
+  --code-bg: #dfe8d4;
+  --cell: 1.125rem;
+  /* A drafting X for done tasks. */
+  --check: linear-gradient(45deg, transparent 44%, var(--text) 44% 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 44%, var(--text) 44% 58%, transparent 58%);
+  /* Reading width of a page; wide screens set one width for every page (see the end of this file). */
+  --measure: 36rem;
+  --page: var(--measure);
+  /* Type scale */
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.9375rem;
+  --fs-base: 1.0625rem;
+  --fs-md: 1.25rem;
+  --fs-lg: 1.5rem;
+  --fs-xl: 1.75rem;
+  --lh-body: 1.6;
+  --lh-heading: 1.2;
+  --lh-ui: 1.4;
+  --track-caps: 0.08em;
+  /* Spacing scale */
+  --sp-0: 0.125rem;
+  --sp-1: 0.25rem;
+  --sp-2: 0.375rem;
+  --sp-3: 0.5rem;
+  --sp-4: 0.75rem;
+  --sp-5: 1rem;
+  --sp-6: 1.5rem;
+  --sp-7: 2rem;
+  --sp-8: 3rem;
+  --sp-9: 4rem;
+  --r-sm: 0.375rem;
+  --r-md: 0.5rem;
+  --r-pill: 1rem;
+  /* Room kept above a jump target for anything stuck to the top of the screen. */
+  --sticky-offset: var(--sp-5);
+  --font-text: "IBM Plex Sans", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* Blueprint: the same pad, drawn in reverse. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #102a4c;
+    --surface: #13325a;
+    --text: #e9f1fb;
+    --muted: #a9bfdb;
+    --line: #3d6aa3;
+    --accent: #9fd8ff;
+    --missing: #8aa7cc;
+    --field-border: #8aa7cc;
+    --scroll-shadow: rgb(0 0 0 / 0.35);
+    --number: #ffc66b;
+    --rule: #5f8cc4;
+    --grid: #132d51;
+    --grid-major: #17355e;
+    --code-bg: #1b3d68;
+  }
+}
+
+/* Phones: lines hold about 30 characters, so tighter leading reads better. */
+@media (max-width: 40em) {
+  :root {
+    --lh-body: 1.5;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Every size is in rem, so this scales the whole interface (140% of the browser default). */
+  font-size: 140%;
+  /* Keep room for the scrollbar, so filtering a list short and long doesn't shift the page. */
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(to right, var(--grid-major) 1px, transparent 1px) 0 0 / calc(var(--cell) * 5) calc(var(--cell) * 5),
+    linear-gradient(to bottom, var(--grid-major) 1px, transparent 1px) 0 0 / calc(var(--cell) * 5) calc(var(--cell) * 5),
+    linear-gradient(to right, var(--grid) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+    var(--bg);
+  color: var(--text);
+  font: var(--fs-base)/var(--lh-body) var(--font-text);
+  overflow-wrap: break-word;
+}
+
+/* Plex Sans Condensed for headings and the header; Plex Mono for labels, dates, counts, and tags;
+   Plex Sans for reading. */
+h1,
+h2,
+h3,
+h4,
+.top,
+.sections,
+.tag-index {
+  font-family: var(--font-display);
+}
+
+.meta,
+.kicker,
+.count,
+.results .kind,
+.facts,
+.tags,
+label,
+.az {
+  font-family: var(--font-mono);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Links in text: inked heavier in the accent color, turning the section-number color on hover. */
+.prose a,
+.lede a,
+.backlinks a {
+  font-weight: 600;
+}
+
+.prose a:hover,
+.lede a:hover,
+.backlinks a:hover {
+  color: var(--number);
+}
+
+/* Links that leave the notebook get a small arrow. */
+:is(.prose, .lede) a:is([href^="http:"], [href^="https:"], [href^="//"])::after {
+  content: "\2197";
+  margin-left: 0.1em;
+  color: var(--number);
+  font-size: 0.6em;
+  font-weight: 400;
+  vertical-align: 0.5em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--sp-0);
+}
+
+/* Footnote markers would otherwise push their lines apart. */
+sup,
+sub {
+  line-height: 0;
+}
+
+/* Header: the printed strip at the top of every sheet, with tabs. It lines up with the page's
+   text column, at every width. */
+.top {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-4);
+  padding: 0 max(var(--sp-5), (100% - var(--page)) / 2 + var(--sp-5));
+  border-top: 6px solid var(--rule);
+  border-bottom: 3px double var(--rule);
+  background: var(--bg);
+  font-size: var(--fs-sm);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--text);
+  font: 600 0.9375rem/1 var(--font-display);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.brand::before {
+  content: "";
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid var(--number);
+  border-radius: 50%;
+}
+
+.top nav {
+  display: flex;
+}
+
+.top nav a {
+  padding: 0 var(--sp-3);
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font: 500 0.75rem/3rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.top nav a[aria-current="page"] {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: inset 0 -3px 0 var(--number);
+}
+
+/* Phones: the brand on one row, the tabs sharing the row below. */
+@media (max-width: 40em) {
+  .top {
+    flex-wrap: wrap;
+    padding-inline: 0;
+  }
+
+  .brand {
+    flex: 1 0 100%;
+    padding: var(--sp-4) var(--sp-5);
+  }
+
+  .top nav {
+    flex: 1 0 100%;
+    border-top: 1px solid var(--line);
+  }
+
+  .top nav a {
+    flex: 1 1 0;
+    text-align: center;
+  }
+
+  .top nav a:first-child {
+    border-left: 0;
+  }
+}
+
+main {
+  max-width: var(--page);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-9);
+}
+
+h1 {
+  font-size: var(--fs-xl);
+  line-height: var(--lh-heading);
+  margin: 0 0 var(--sp-3);
+}
+
+h2 {
+  font-size: var(--fs-md);
+  line-height: var(--lh-heading);
+  margin: var(--sp-7) 0 var(--sp-3);
+}
+
+h3 {
+  font-size: var(--fs-base);
+  line-height: var(--lh-heading);
+  margin: var(--sp-6) 0 var(--sp-1);
+}
+
+/* Headings on index pages, like the A to Z groups. */
+main > h2,
+section[data-group] > h2 {
+  padding-bottom: 0.375rem;
+  border-bottom: 1.5px solid var(--rule);
+  font-size: 1.125rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Headings in note text: h2 is a capitals section heading over a rule, h3 a smaller heading, h4 a
+   small mono label. None use the accent color, which means "link". */
+.prose h1,
+.prose h2 {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: baseline;
+  margin: 2.5rem 0 var(--sp-4);
+  padding: 0 0 0.375rem;
+  border-bottom: 1.5px solid var(--rule);
+  font: 600 1.3125rem/1.25 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.prose h3 {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: baseline;
+  margin: var(--sp-6) 0 0.375rem;
+  font: 600 var(--fs-base)/1.3 var(--font-text);
+}
+
+.prose h4,
+.prose h5,
+.prose h6 {
+  font: 500 0.75rem/1.4 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: var(--sp-6) 0 var(--sp-1);
+}
+
+/* The first heading, or one right after a rule, needs no space of its own. */
+.prose > :is(h1, h2):first-child,
+.prose hr + :is(h1, h2) {
+  margin-top: 0;
+}
+
+.prose :is(h2, h3) + :is(h3, h4) {
+  margin-top: var(--sp-4);
+}
+
+/* Numbered sections in notes: 1, 1.1. An h3 before any h2 gets no number. */
+.note .prose {
+  counter-reset: h2;
+}
+
+.note .prose h2 {
+  counter-increment: h2;
+  counter-reset: h3;
+}
+
+.note .prose h3 {
+  counter-increment: h3;
+}
+
+.note .prose h2::before {
+  content: counter(h2);
+  min-width: 1.4em;
+  font: 500 0.875rem var(--font-mono);
+  color: var(--number);
+}
+
+.note .prose h2 ~ h3::before {
+  content: counter(h2) "." counter(h3);
+  min-width: 2.4em;
+  font: 500 0.8125rem var(--font-mono);
+  color: var(--number);
+}
+
+:is(h1, h2, h3, h4, h5, h6, li)[id] {
+  scroll-margin-top: var(--sticky-offset);
+}
+
+.lede {
+  font-size: var(--fs-base);
+  margin: 0 0 var(--sp-4);
+}
+
+.meta,
+.kicker {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  margin: var(--sp-1) 0;
+}
+
+.kicker a {
+  color: inherit;
+  text-transform: capitalize;
+}
+
+.kicker,
+label {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.page-head {
+  margin-bottom: var(--sp-6);
+  padding-bottom: var(--sp-5);
+  border-bottom: 3px double var(--rule);
+}
+
+/* Tags are plain mono links. */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  list-style: none;
+  padding: 0;
+  margin: var(--sp-3) 0;
+}
+
+.tags a {
+  display: inline-block;
+  font-size: var(--fs-xs);
+}
+
+.tags a:hover {
+  color: var(--number);
+}
+
+.facts {
+  margin: var(--sp-1) 0 var(--sp-3);
+  font-size: var(--fs-xs);
+}
+
+/* A note's header is a drawing's title block: Subject, Description, Tags, Date. */
+.note > .page-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  margin-bottom: var(--sp-6);
+  padding: 0;
+  border: 1.5px solid var(--rule);
+  background: var(--surface);
+}
+
+.note > .page-head > * {
+  margin: 0;
+  padding: 0.375rem 0.625rem;
+  border-top: 1px solid var(--line);
+}
+
+.note > .page-head > *::before {
+  display: block;
+  font: 500 0.625rem/1.4 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.note > .page-head h1 {
+  grid-column: 1 / -1;
+  border-top: 0;
+  padding-bottom: 0.625rem;
+  font: 600 1.625rem/1.15 var(--font-display);
+}
+
+.note > .page-head h1::before {
+  content: "Subject";
+  margin-bottom: 0.25rem;
+}
+
+.note > .page-head .lede {
+  grid-column: 1 / -1;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.note > .page-head .lede::before {
+  content: "Description";
+}
+
+/* Same size and line height as the Date cell, with no extra gap under the label, so the two line up. */
+.note > .page-head .tags {
+  flex-wrap: wrap;
+  align-content: start;
+  row-gap: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+}
+
+.note > .page-head .tags::before {
+  content: "Tags";
+  width: 100%;
+}
+
+.note > .page-head .meta {
+  border-left: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.note > .page-head .meta::before {
+  content: "Date";
+}
+
+/* Phones: Tags and Date stack, each full width. */
+@media (max-width: 40em) {
+  .note > .page-head > * {
+    grid-column: 1 / -1;
+  }
+
+  .note > .page-head .meta {
+    border-left: 0;
+  }
+}
+
+/* Note text */
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+}
+
+.prose pre {
+  overflow-x: auto;
+  padding: var(--sp-4);
+  background: var(--code-bg);
+  font-size: var(--fs-sm);
+  tab-size: 2;
+}
+
+.prose code {
+  padding: 1px 4px;
+  background: var(--code-bg);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+.prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.prose blockquote {
+  margin: var(--sp-6) 0;
+  padding-left: var(--sp-5);
+  border-left: 3px solid var(--rule);
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Readwise and RSS pages are mostly quotes, so a whole page of muted italics would tire the eye. */
+:is(.readwise, .highlight) .prose blockquote {
+  color: var(--text);
+  font-style: normal;
+}
+
+.prose blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Wide tables scroll sideways, with a shadow on the side that has more. They sit on a solid box, like
+   the title block, so their row lines don't compete with the grid and the shadows have a plain
+   surface to fade into. */
+.table-wrap {
+  overflow-x: auto;
+  margin: var(--sp-5) 0 var(--sp-6);
+  padding: 0 var(--sp-4);
+  border: 1.5px solid var(--rule);
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left / 2rem 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right / 2rem 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--scroll-shadow), transparent) left / 0.75rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--scroll-shadow), transparent) right / 0.75rem 100% no-repeat scroll,
+    var(--surface);
+}
+
+.prose table {
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+/* A floor on column width, so a phone scrolls a wide table sideways instead of squeezing
+   each column to a word per line. */
+.prose th,
+.prose td {
+  min-width: 8rem;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose :is(th, td):first-child {
+  padding-left: 0;
+}
+
+.prose tr:last-child > td {
+  border-bottom: 0;
+}
+
+.prose th {
+  font: 500 var(--fs-xs) var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1.5px solid var(--rule);
+}
+
+.prose p {
+  margin: 0 0 var(--sp-5);
+}
+
+.prose :is(p, li) {
+  text-wrap: pretty;
+}
+
+@media (max-width: 40em) {
+  .prose p {
+    hyphens: auto;
+  }
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 var(--sp-5);
+  padding-left: var(--sp-6);
+}
+
+.prose li ul,
+.prose li ol {
+  margin: var(--sp-1) 0 0;
+}
+
+.prose li + li {
+  margin-top: var(--sp-2);
+}
+
+.prose li::marker {
+  color: var(--muted);
+}
+
+.prose ul > li::marker {
+  content: "– ";
+  color: var(--number);
+}
+
+.prose ol > li::marker {
+  font-family: var(--font-display);
+  font-size: 0.9em;
+}
+
+.prose li > p {
+  margin-bottom: var(--sp-2);
+}
+
+.prose strong {
+  font-weight: 600;
+}
+
+/* Task lists: a square box replaces the bullet, wrapped lines hang under the text, and done items
+   fade and get a drafting X. */
+.prose li:has(> input[type="checkbox"], > p > input[type="checkbox"]) {
+  list-style: none;
+  margin-left: calc(-1 * var(--sp-6));
+  padding-left: var(--sp-6);
+  text-indent: calc(-1 * var(--sp-6));
+}
+
+.prose li:has(> input[type="checkbox"], > p > input[type="checkbox"])::marker {
+  content: none;
+}
+
+.prose li > input[type="checkbox"],
+.prose li > p > input[type="checkbox"] {
+  appearance: none;
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin: 0 calc(var(--sp-6) - 0.9em) 0 0;
+  vertical-align: -0.1em;
+  border: 1.5px solid var(--field-border);
+  background: var(--surface);
+  /* Safari fades disabled controls; these are disabled only because the page is read-only. */
+  opacity: 1;
+}
+
+.prose li > input[type="checkbox"]:checked,
+.prose li > p > input[type="checkbox"]:checked {
+  background: var(--check), var(--surface);
+}
+
+.prose li:has(> input:checked, > p > input:checked) {
+  color: var(--muted);
+}
+
+.prose li:has(> input[type="checkbox"]) :is(ul, ol) {
+  text-indent: 0;
+}
+
+/* A break within a section is a dimension line. */
+.prose hr {
+  height: 0.875rem;
+  margin: var(--sp-7) 0;
+  border: 0;
+  background:
+    linear-gradient(var(--rule), var(--rule)) center / 100% 1px no-repeat,
+    linear-gradient(var(--rule), var(--rule)) left center / 1px 100% no-repeat,
+    linear-gradient(var(--rule), var(--rule)) right center / 1px 100% no-repeat;
+}
+
+/* Contents, between the note's header and its text, like a drawing's revision table. The whole
+   summary is the tap target. Numbers hang in their own column; wrapped lines line up under the
+   text, not the number. */
+.toc {
+  --toc-num: 1.5rem;
+  margin: 0 0 var(--sp-7);
+  border: 1.5px solid var(--rule);
+  background: var(--surface);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-ui);
+}
+
+.toc summary {
+  display: block;
+  padding: 0 var(--sp-5);
+  cursor: pointer;
+  color: var(--muted);
+  font: 500 0.6875rem/2.25rem var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.toc summary::before {
+  content: "▸ ";
+}
+
+.toc details[open] > summary::before {
+  content: "▾ ";
+}
+
+.toc summary::-webkit-details-marker {
+  display: none;
+}
+
+.toc details[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toc > details > ol {
+  padding: var(--sp-2) 0;
+  counter-reset: toc;
+}
+
+.toc > details > ol > li {
+  counter-increment: toc;
+}
+
+.toc ol ol {
+  padding-bottom: 0.25rem;
+}
+
+.toc a {
+  display: block;
+  padding: 0.25rem 0.625rem 0.25rem calc(0.625rem + var(--toc-num));
+  color: var(--text);
+  font-size: 0.90625rem;
+  line-height: 1.35;
+}
+
+.toc ol ol a {
+  color: var(--muted);
+  font-size: 0.84375rem;
+}
+
+/* Like links in text, contents entries turn the section-number color on hover. */
+.toc a:hover {
+  color: var(--number);
+}
+
+.toc > details > ol > li > a {
+  text-indent: calc(-1 * var(--toc-num));
+}
+
+.toc > details > ol > li > a::before {
+  content: counter(toc);
+  display: inline-block;
+  width: var(--toc-num);
+  text-indent: 0;
+  font: 500 0.75rem var(--font-mono);
+  color: var(--number);
+}
+
+/* Notes not written yet aren't links: plain weight, just the muted color. */
+.missing {
+  color: var(--missing);
+}
+
+.footnotes {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+/* Footnote reference numbers are small; give them a bigger tap area. */
+.prose sup a {
+  padding: var(--sp-1);
+}
+
+.backlinks {
+  margin-top: var(--sp-8);
+  padding-top: var(--sp-5);
+  border-top: 3px double var(--rule);
+}
+
+.backlinks h2 {
+  margin-top: 0;
+  color: var(--muted);
+  font: 500 0.6875rem/1.4 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Lists of notes and recipes */
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list li {
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.list a {
+  font-weight: 600;
+}
+
+.list p {
+  margin: var(--sp-0) 0 0;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.tag-index {
+  list-style: none;
+  padding: 0;
+  columns: 2;
+}
+
+.tag-index li {
+  break-inside: avoid;
+}
+
+.count {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A to Z on the notes index: two rows on a phone, one sticky row on wider screens. */
+.az {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 0 var(--sp-5);
+  font-size: var(--fs-xs);
+}
+
+.az a {
+  flex: 0 0 calc(100% / 13);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  font-weight: 500;
+}
+
+.az a[aria-disabled] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+@media (min-width: 40em) {
+  :root:has(.az) {
+    --sticky-offset: 3rem;
+  }
+
+  .az {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    flex-wrap: nowrap;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .az a {
+    flex: 1 1 0;
+  }
+}
+
+/* Forms */
+
+input,
+select,
+button {
+  font: inherit;
+  font-family: var(--font-display);
+  color: inherit;
+}
+
+input[type="search"],
+select {
+  width: 100%;
+  padding: var(--sp-3);
+  border: 1.5px solid var(--field-border);
+  background: var(--surface);
+  font-family: var(--font-text);
+}
+
+button {
+  padding: var(--sp-3) var(--sp-5);
+  border: 0;
+  background: var(--text);
+  color: var(--bg);
+  font: 500 0.75rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+label {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.filter {
+  margin: var(--sp-5) 0;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+  margin: var(--sp-5) 0;
+}
+
+.filters label:first-child {
+  grid-column: 1 / -1;
+}
+
+.filters label:nth-child(2) {
+  grid-column: 1 / -1;
+}
+
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin: var(--sp-3) 0 var(--sp-5);
+}
+
+.search-form input[type="search"] {
+  flex: 1 1 12rem;
+  width: auto;
+}
+
+.kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-5);
+  width: 100%;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.kinds label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+.results .kind {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--track-caps);
+  margin-left: var(--sp-2);
+}
+
+/* Home: search box and button joined, sections as numbered cells of one table. */
+
+.search-form.home {
+  flex-wrap: nowrap;
+  gap: 0;
+  border: 1.5px solid var(--rule);
+  background: var(--surface);
+}
+
+.search-form.home input[type="search"] {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+}
+
+.search-form.home button {
+  border-left: 1.5px solid var(--rule);
+}
+
+.sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: var(--sp-5) 0 var(--sp-7);
+  border: 1.5px solid var(--rule);
+  background: var(--surface);
+  counter-reset: section;
+}
+
+.sections a {
+  display: block;
+  padding: 0.625rem 0.75rem 0.75rem;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  counter-increment: section;
+}
+
+.sections a:nth-child(2n) {
+  border-right: 0;
+}
+
+.sections a:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.sections a::before {
+  content: counter(section);
+  display: block;
+  font: 500 0.6875rem/1.4 var(--font-mono);
+  color: var(--number);
+}
+
+.sections strong {
+  display: block;
+  font: 600 1.125rem/1.25 var(--font-display);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.sections span {
+  color: var(--muted);
+  font: 400 0.78125rem var(--font-mono);
+}
+
+/* The public demo's footer, pointing to the code. */
+.site-foot {
+  max-width: var(--page);
+  margin: 0 auto;
+  padding: 0 var(--sp-5) var(--sp-7);
+  color: var(--muted);
+  font: var(--fs-xs) / var(--lh-ui) var(--font-mono);
+}
+
+/* marked-footnote labels its section "sr-only". */
+.visually-hidden,
+.prose .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Wide screens, from 1200px: every page is the same width, so edges and the header don't jump between
+   pages. That width fits a 34rem text column, a 14rem contents column, and the gap at the 140% root.
+   A note's title block spans it; text and summaries keep to the 34rem column. The contents move to
+   the side column, stay open, and stay in view while the note scrolls (toc.js marks where you are). */
+@media (min-width: 75em) {
+  :root {
+    --cell: 1.25rem;
+    --page: calc(34rem + 14rem + 2.5rem + 2rem);
+  }
+
+  article:not(:has(> .toc)) > *,
+  .list p,
+  .filter,
+  .filters {
+    max-width: 34rem;
+  }
+
+  .note:has(> .toc) {
+    display: grid;
+    grid-template-columns: minmax(0, 34rem) 14rem;
+    column-gap: 2.5rem;
+    align-items: start;
+  }
+
+  .note:has(> .toc) > .page-head,
+  article > .page-head.page-head {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+
+  .note > .page-head {
+    grid-template-columns: 2fr 1fr 12rem;
+  }
+
+  .note > .page-head h1 {
+    font-size: 2.25rem;
+  }
+
+  .note > .page-head .lede {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .note > .page-head .tags {
+    grid-column: 2;
+    grid-row: 2;
+    border-left: 1px solid var(--line);
+  }
+
+  .note > .page-head .meta {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .note > :not(.toc, .page-head) {
+    grid-column: 1;
+  }
+
+  .note > .toc {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+    position: sticky;
+    top: var(--sp-6);
+    max-height: calc(100vh - 3rem);
+    max-height: calc(100dvh - 3rem);
+    overflow-y: auto;
+    margin: 0;
+    font-size: inherit;
+  }
+
+  .note > .toc summary {
+    padding: 0 0.625rem;
+    pointer-events: none;
+  }
+
+  .note > .toc summary::before {
+    content: none;
+  }
+
+  /* The current section gets a tab marker. */
+  .note > .toc a {
+    border-left: 3px solid transparent;
+  }
+
+  .note > .toc a[aria-current] {
+    color: var(--text);
+    font-weight: 600;
+    background: var(--bg);
+    border-left-color: var(--number);
+  }
+
+  .sections {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .sections a,
+  .sections a:nth-child(2n) {
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+  }
+
+  .sections a:last-child {
+    border-right: 0;
+  }
+}

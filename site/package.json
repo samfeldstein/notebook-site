@@ -1,0 +1,22 @@
+{
+  "name": "notes-site",
+  "private": true,
+  "type": "module",
+  "description": "A read-only website for a notebook of Markdown files. Builds the private version, or with --public the demo in demo/.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test.mjs"
+  },
+  "dependencies": {
+    "marked": "18.1.1",
+    "marked-footnote": "1.4.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.149.0"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "fsevents": false,
+    "workerd": true
+  }
+}

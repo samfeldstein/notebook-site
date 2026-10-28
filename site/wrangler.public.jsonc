@@ -1,0 +1,13 @@
+// The public demo, built with `node build.mjs --public` from the sample notes in demo/.
+// Static files only: no Worker code and no login. Deploy with `npx wrangler deploy --config wrangler.public.jsonc`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "notebook-site",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  },
+  "workers_dev": true,
+  "preview_urls": false
+}
