@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Marked } from 'marked';
 import markedFootnote from 'marked-footnote';
@@ -19,6 +20,25 @@ const option = (name) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(nam
 const PUBLIC = argv.includes('--public');
 const REPO = 'https://github.com/samfeldstein/notebook-site';
 const SITE_URL = 'https://notebook-site.samfeldstein.workers.dev';
+const AUTHOR = 'Sam Feldstein';
+const AUTHOR_URL = 'https://samfeldstein.xyz';
+
+// Files in static/ are linked with a hash of their contents (?v=), so browsers can keep them for a
+// year and still fetch a changed one. search.js imports score.js, so that import gets the hash too.
+// Fonts keep plain names; a changed font gets a new file name instead.
+const hash = (data) => createHash('sha256').update(data).digest('hex').slice(0, 10);
+const shipped = new Map(
+  fs.readdirSync(path.join(SITE, 'static'), { withFileTypes: true })
+    .filter((f) => f.isFile())
+    .map((f) => [f.name, fs.readFileSync(path.join(SITE, 'static', f.name))]),
+);
+shipped.set('score.js', fs.readFileSync(path.join(SITE, '../scripts/lib/score.mjs')));
+{
+  const search = shipped.get('search.js').toString();
+  if (!search.includes("from './score.js'")) throw new Error("static/search.js no longer imports './score.js'; update the hashing in build.mjs");
+  shipped.set('search.js', Buffer.from(search.replace("from './score.js'", `from './score.js?v=${hash(shipped.get('score.js'))}'`)));
+}
+const asset = (name) => `/static/${name}?v=${hash(shipped.get(name))}`;
 const ROOT = path.resolve(option('root') ?? (PUBLIC ? path.join(SITE, 'demo') : path.join(SITE, '..')));
 const OUT = path.resolve(option('out') ?? path.join(SITE, 'dist'));
 // Workers serves static files up to 25 MiB. Bigger attachments stay on the Mac.
@@ -89,11 +109,11 @@ ${PUBLIC ? '' : '<meta name="robots" content="noindex, nofollow">\n'}<meta name=
 <meta name="theme-color" content="#102a4c" media="(prefers-color-scheme: dark)">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-${PUBLIC && url ? `<link rel="canonical" href="${esc(SITE_URL + url)}">\n` : ''}<link rel="preload" href="/static/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+${PUBLIC ? `<meta name="author" content="${AUTHOR}">\n<link rel="author" href="${AUTHOR_URL}">\n` : ''}${PUBLIC && url ? `<link rel="canonical" href="${esc(SITE_URL + url)}">\n` : ''}<link rel="preload" href="/static/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/static/fonts/ibm-plex-sans-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/static/site.css">
-<link rel="icon" href="/static/icon.svg">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="stylesheet" href="${asset('site.css')}">
+<link rel="icon" href="${asset('icon.svg')}">
+<link rel="apple-touch-icon" href="${asset('apple-touch-icon.png')}">
 <meta name="apple-mobile-web-app-title" content="Notebook">
 </head>
 <body>
@@ -101,7 +121,7 @@ ${PUBLIC && url ? `<link rel="canonical" href="${esc(SITE_URL + url)}">\n` : ''}
 <main>
 ${body}
 </main>
-${PUBLIC ? `<footer class="site-foot"><p>A demo built from sample notes, which are also the docs. <a href="${REPO}" rel="noreferrer">Code on GitHub</a>.</p></footer>\n` : ''}${scripts.map((s) => `<script type="module" src="/static/${s}"></script>`).join('\n')}
+${PUBLIC ? `<footer class="site-foot"><p>Made by <a href="${AUTHOR_URL}">${AUTHOR}</a>. A demo built from sample notes, which are also the docs. <a href="${REPO}" rel="noreferrer">Code on GitHub</a>.</p></footer>\n` : ''}${scripts.map((s) => `<script type="module" src="${asset(s)}"></script>`).join('\n')}
 </body>
 </html>
 `;
@@ -450,7 +470,10 @@ if (PUBLIC) {
 
 // Static files, the shared search scoring, and attachments that pages link to.
 fs.cpSync(path.join(SITE, 'static'), path.join(OUT, 'static'), { recursive: true });
-fs.copyFileSync(path.join(SITE, '../scripts/lib/score.mjs'), path.join(OUT, 'static/score.js'));
+for (const [name, data] of shipped) fs.writeFileSync(path.join(OUT, 'static', name), data);
+// The demo's static files are served straight from the folder, so _headers sets their caching.
+// The private version's Worker sets it instead (worker.js).
+if (PUBLIC) write('_headers', '/static/*\n  Cache-Control: public, max-age=31536000, immutable\n');
 for (const f of attachments) {
   fs.mkdirSync(path.dirname(path.join(OUT, f)), { recursive: true });
   fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));

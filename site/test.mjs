@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import worker, { validAccessToken } from './worker.js';
 
@@ -100,7 +101,7 @@ test('notes with two or more headings get contents, with h3 nested under h2', ()
   });
   assert.equal(s.code, 0, s.output);
   assert.match(s.page('long'), /<nav class="toc"[^>]*><details open><summary>Contents<\/summary><ol><li><a href="#admin">Admin<\/a><ol><li><a href="#domain">Domain<\/a><\/li><\/ol><\/li><li><a href="#pages">Pages<\/a><\/li><\/ol>/);
-  assert.match(s.page('long'), /src="\/static\/toc.js"/);
+  assert.match(s.page('long'), /src="\/static\/toc.js\?v=[0-9a-f]{10}"/);
   assert.match(s.page('mixed'), /<ol><li><a href="#first">First<\/a><\/li><li class="unnumbered"><a href="#part">Part<\/a><\/li><li><a href="#second">Second<\/a><\/li><\/ol>/, 'only h2 entries are numbered, like the note');
   assert.doesNotMatch(s.page('short'), /class="toc"|toc.js/);
   assert.doesNotMatch(s.page('recipes/soups/zuppa'), /class="toc"/, 'recipes get none');
@@ -180,6 +181,13 @@ test('Readwise wikilinks resolve, raw HTML shows as text, and search indexes spl
   assert.deepEqual(notes.map((e) => e.id), ['a']);
   assert.deepEqual(rw.map((e) => e.id), ['readwise/book']);
   assert.ok(s.has('static/score.js'));
+  const v = (name) => s.page('search').match(new RegExp(`/static/${name}\\?v=([0-9a-f]{10})`))?.[1];
+  assert.ok(v('site.css') && v('search.js'), 'static files are linked with a content hash');
+  const search = fs.readFileSync(path.join(s.out, 'static/search.js'), 'utf8');
+  const score = fs.readFileSync(path.join(s.out, 'static/score.js'));
+  assert.match(search, new RegExp(`from './score\\.js\\?v=${createHash('sha256').update(score).digest('hex').slice(0, 10)}'`), 'search.js imports the hashed score.js');
+  assert.equal(v('search.js'), createHash('sha256').update(search).digest('hex').slice(0, 10), 'the hash is of the file as shipped');
+  assert.equal(s.has('_headers'), false, "the private version's Worker sets caching");
   s.cleanup();
 });
 
@@ -230,6 +238,11 @@ test('the Worker only serves requests with a valid Access token', async () => {
     assert.equal(ok.status, 200);
     assert.equal(await ok.text(), 'page');
     assert.equal(ok.headers.get('X-Robots-Tag'), 'noindex, nofollow');
+    assert.equal(ok.headers.get('Cache-Control'), 'private, no-cache');
+    const at = async (p) => (await worker.fetch(new Request(`https://notes.example.workers.dev${p}`, { headers: { 'Cf-Access-Jwt-Assertion': await sign(good, claims) } }), env)).headers.get('Cache-Control');
+    assert.equal(await at('/static/site.css?v=abc'), 'private, max-age=31536000, immutable', 'hashed files are kept');
+    assert.equal(await at('/static/fonts/a.woff2'), 'private, max-age=31536000, immutable', 'fonts are kept');
+    assert.equal(await at('/static/site.css'), 'private, no-cache', 'an unhashed file is checked each time');
     assert.equal((await ask({ Cookie: `x=1; CF_Authorization=${await sign(good, claims)}` })).status, 200, 'cookie works too');
 
     assert.equal((await ask({})).status, 403, 'no token');
@@ -313,14 +326,15 @@ test('--public builds the demo: indexable, with a footer linking the code', () =
   const home = fs.readFileSync(path.join(s.out, 'index.html'), 'utf8');
   assert.doesNotMatch(home, /name="robots"/);
   assert.match(home, /href="\/welcome\/">Welcome/);
-  assert.match(s.page('welcome'), /class="site-foot".*github\.com/);
+  assert.match(s.page('welcome'), /class="site-foot"><p>Made by <a href="https:\/\/samfeldstein\.xyz">Sam Feldstein<\/a>.*github\.com/);
+  assert.match(s.page('welcome'), /<meta name="author" content="Sam Feldstein">/);
   assert.match(home, /<h1 class="visually-hidden">Notebook<\/h1>/, 'the home page has its one h1');
   assert.match(s.page('welcome'), /<meta name="description" content="[^"]+">/);
   assert.match(s.page('welcome'), /<link rel="canonical" href="https:\/\/[^"]+\/welcome\/">/);
   assert.match(fs.readFileSync(path.join(s.out, 'sitemap.xml'), 'utf8'), /<loc>https:\/\/[^<]+\/welcome\/<\/loc>/);
   const priv = site({ tracked: { 'welcome.md': note('Welcome') } });
   assert.match(priv.page('welcome'), /name="robots" content="noindex/);
-  assert.doesNotMatch(priv.page('welcome'), /site-foot|rel="canonical"/);
+  assert.doesNotMatch(priv.page('welcome'), /site-foot|rel="canonical"|name="author"/);
   assert.equal(fs.existsSync(path.join(priv.out, 'sitemap.xml')), false, 'the private version has no sitemap');
   s.cleanup();
   priv.cleanup();

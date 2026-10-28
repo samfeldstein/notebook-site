@@ -2,7 +2,7 @@
 
 A read-only website for a notebook of plain Markdown files: notes with links and backlinks, tags, recipes with filters, saved highlights, and word search, in a design based on engineering computation paper.
 
-It was built to read a private notebook on a phone. **The live demo** is built from sample notes that double as the documentation, and it's the best place to read them: https://notebook-site.samfeldstein.workers.dev
+Made by [Sam Feldstein](https://samfeldstein.xyz), to read a private notebook on a phone. **The live demo** is built from sample notes that double as the documentation, and it's the best place to read them: https://notebook-site.samfeldstein.workers.dev
 
 ## What's interesting about it
 
