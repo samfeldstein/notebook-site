@@ -163,8 +163,9 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  /* Every size is in rem, so this scales the whole interface (140% of the browser default). */
-  font-size: 140%;
+  /* Every size is in rem, so this scales the whole interface: 140% of the browser default from 640px
+     (the phone breakpoint) up, easing down to 112% at 480px and below, so phones get 20% smaller. */
+  font-size: clamp(112%, 28% + 2.8vw, 140%);
   /* Keep room for the scrollbar, so filtering a list short and long doesn't shift the page. */
   scrollbar-gutter: stable;
 }
@@ -218,17 +219,21 @@ a {
   text-decoration: none;
 }
 
-/* Links in text: inked heavier in the accent color, turning the section-number color on hover. */
+/* Every link turns the accent color on hover. Links already in the accent color get underlined. */
+a[href]:hover {
+  color: var(--accent);
+}
+
+:is(.prose, .lede, .backlinks, .tags, .list) a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* Links in text: inked heavier in the accent color. */
 .prose a,
 .lede a,
 .backlinks a {
   font-weight: 600;
-}
-
-.prose a:hover,
-.lede a:hover,
-.backlinks a:hover {
-  color: var(--number);
 }
 
 /* Links that leave the notebook get a small arrow. */
@@ -484,10 +489,6 @@ label {
   font-size: var(--fs-xs);
 }
 
-.tags a:hover {
-  color: var(--number);
-}
-
 .facts {
   margin: var(--sp-1) 0 var(--sp-3);
   font-size: var(--fs-xs);
@@ -675,10 +676,10 @@ label {
   text-wrap: pretty;
 }
 
-@media (max-width: 40em) {
-  .prose p {
-    hyphens: auto;
-  }
+/* Justified, with hyphenation so the gaps between words stay even. */
+.prose p {
+  text-align: justify;
+  hyphens: auto;
 }
 
 .prose ul,
@@ -837,11 +838,6 @@ label {
 .toc ol ol a {
   color: var(--muted);
   font-size: 0.84375rem;
-}
-
-/* Like links in text, contents entries turn the section-number color on hover. */
-.toc a:hover {
-  color: var(--number);
 }
 
 .toc > details > ol > li > a {

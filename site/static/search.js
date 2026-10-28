@@ -68,8 +68,17 @@ form.elements.q.value = params.get('q') ?? '';
 if (params.get('kind')) form.elements.kind.value = params.get('kind');
 form.elements.readwise.checked = params.get('readwise') === '1';
 
+// Results update as the query is typed, after a short pause so each keystroke doesn't rescore
+// every note. Search, or Return, runs it at once and closes the phone keyboard.
+let typing;
+form.elements.q.addEventListener('input', () => {
+  clearTimeout(typing);
+  typing = setTimeout(search, 150);
+});
 form.addEventListener('submit', (e) => {
   e.preventDefault();
+  clearTimeout(typing);
+  form.elements.q.blur();
   search();
 });
 form.addEventListener('change', search);
