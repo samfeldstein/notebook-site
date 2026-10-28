@@ -94,12 +94,14 @@ test('notes with two or more headings get contents, with h3 nested under h2', ()
     tracked: {
       'long.md': note('Long', { body: '## Admin\n\n### Domain\n\nText.\n\n## Pages\n\nText.' }),
       'short.md': note('Short', { body: '## Only\n\nText.' }),
+      'mixed.md': note('Mixed', { body: '## First\n\nText.\n\n# Part\n\n## Second\n\nText.' }),
       'recipes/soups/zuppa.md': recipe('Zuppa', 'soups').replace('## Instructions', '## Ingredients\n\n## Instructions'),
     },
   });
   assert.equal(s.code, 0, s.output);
   assert.match(s.page('long'), /<nav class="toc"[^>]*><details open><summary>Contents<\/summary><ol><li><a href="#admin">Admin<\/a><ol><li><a href="#domain">Domain<\/a><\/li><\/ol><\/li><li><a href="#pages">Pages<\/a><\/li><\/ol>/);
   assert.match(s.page('long'), /src="\/static\/toc.js"/);
+  assert.match(s.page('mixed'), /<ol><li><a href="#first">First<\/a><\/li><li class="unnumbered"><a href="#part">Part<\/a><\/li><li><a href="#second">Second<\/a><\/li><\/ol>/, 'only h2 entries are numbered, like the note');
   assert.doesNotMatch(s.page('short'), /class="toc"|toc.js/);
   assert.doesNotMatch(s.page('recipes/soups/zuppa'), /class="toc"/, 'recipes get none');
   s.cleanup();
@@ -301,6 +303,7 @@ test('a tag that could write outside tags/ fails the build', () => {
   const ok = site({ tracked: { 'a.md': note('A', { tags: ['idea/emergence'] }) } });
   assert.equal(ok.code, 0, ok.output);
   assert.ok(ok.has('tags/idea/emergence/index.html'), 'pattern tags still work');
+  assert.match(ok.page('a'), /href="\/tags\/idea\/emergence\/"/, 'links keep the slash, not %2F');
   ok.cleanup();
 });
 
@@ -311,9 +314,14 @@ test('--public builds the demo: indexable, with a footer linking the code', () =
   assert.doesNotMatch(home, /name="robots"/);
   assert.match(home, /href="\/welcome\/">Welcome/);
   assert.match(s.page('welcome'), /class="site-foot".*github\.com/);
+  assert.match(home, /<h1 class="visually-hidden">Notebook<\/h1>/, 'the home page has its one h1');
+  assert.match(s.page('welcome'), /<meta name="description" content="[^"]+">/);
+  assert.match(s.page('welcome'), /<link rel="canonical" href="https:\/\/[^"]+\/welcome\/">/);
+  assert.match(fs.readFileSync(path.join(s.out, 'sitemap.xml'), 'utf8'), /<loc>https:\/\/[^<]+\/welcome\/<\/loc>/);
   const priv = site({ tracked: { 'welcome.md': note('Welcome') } });
   assert.match(priv.page('welcome'), /name="robots" content="noindex/);
-  assert.doesNotMatch(priv.page('welcome'), /site-foot/);
+  assert.doesNotMatch(priv.page('welcome'), /site-foot|rel="canonical"/);
+  assert.equal(fs.existsSync(path.join(priv.out, 'sitemap.xml')), false, 'the private version has no sitemap');
   s.cleanup();
   priv.cleanup();
 });

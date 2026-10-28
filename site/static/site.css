@@ -857,6 +857,15 @@ label {
   color: var(--number);
 }
 
+/* An h1, or an h3 before any h2, has no number in the note, so none here either. */
+.toc > details > ol > li.unnumbered {
+  counter-increment: none;
+}
+
+.toc > details > ol > li.unnumbered > a::before {
+  content: "";
+}
+
 /* Notes not written yet aren't links: plain weight, just the muted color. */
 .missing {
   color: var(--missing);

@@ -18,6 +18,7 @@ const argv = process.argv.slice(2);
 const option = (name) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const PUBLIC = argv.includes('--public');
 const REPO = 'https://github.com/samfeldstein/notebook-site';
+const SITE_URL = 'https://notebook-site.samfeldstein.workers.dev';
 const ROOT = path.resolve(option('root') ?? (PUBLIC ? path.join(SITE, 'demo') : path.join(SITE, '..')));
 const OUT = path.resolve(option('out') ?? path.join(SITE, 'dist'));
 // Workers serves static files up to 25 MiB. Bigger attachments stay on the Mac.
@@ -74,7 +75,8 @@ const unesc = (s) => s.replace(/&(amp|lt|gt|quot|#39);/g, (_, e) => ({ amp: '&',
 const slug = (s) => unesc(s.replace(/<[^>]*>/g, '')).toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s+/g, '-');
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-function layout({ title, section, body, scripts = [] }) {
+// The demo's pages get a canonical link; a page without a url (the 404) gets none.
+function layout({ title, description, url, section, body, scripts = [] }) {
   const nav = [['notes', 'Notes'], ['recipes', 'Recipes'], ['search', 'Search']]
     .map(([key, label]) => `<a href="/${key}/"${section === key ? ' aria-current="page"' : ''}>${label}</a>`)
     .join('');
@@ -86,7 +88,8 @@ function layout({ title, section, body, scripts = [] }) {
 ${PUBLIC ? '' : '<meta name="robots" content="noindex, nofollow">\n'}<meta name="theme-color" content="#eef3e6" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#102a4c" media="(prefers-color-scheme: dark)">
 <title>${esc(title)}</title>
-<link rel="preload" href="/static/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<meta name="description" content="${esc(description)}">
+${PUBLIC && url ? `<link rel="canonical" href="${esc(SITE_URL + url)}">\n` : ''}<link rel="preload" href="/static/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/static/fonts/ibm-plex-sans-condensed-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/site.css">
 <link rel="icon" href="/static/icon.svg">
@@ -94,7 +97,7 @@ ${PUBLIC ? '' : '<meta name="robots" content="noindex, nofollow">\n'}<meta name=
 <meta name="apple-mobile-web-app-title" content="Notebook">
 </head>
 <body>
-<header class="top"><a class="brand" href="/">Notebook</a><nav>${nav}</nav></header>
+<header class="top"><a class="brand" href="/">Notebook</a><nav aria-label="Site">${nav}</nav></header>
 <main>
 ${body}
 </main>
@@ -105,7 +108,7 @@ ${PUBLIC ? `<footer class="site-foot"><p>A demo built from sample notes, which a
 }
 
 // Tags that differ only in case share one page, since their folders would collide on a Mac's disk.
-const tagUrl = (t) => `/tags/${encodeURIComponent(t.toLowerCase())}/`;
+const tagUrl = (t) => `/tags/${t.toLowerCase().split('/').map(encodeURIComponent).join('/')}/`;
 const tagLinks = (tags, href = tagUrl) =>
   tags.length ? `<ul class="tags">${tags.map((t) => `<li><a href="${esc(href(t))}">${esc(t)}</a></li>`).join('')}</ul>` : '';
 
@@ -241,7 +244,12 @@ const write = (rel, html) => {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, html);
 };
-const writePage = (urlPath, html) => write(path.join(decodeURIComponent(urlPath), 'index.html'), html);
+// The demo lists every page in its sitemap; the private version isn't indexed, so it has none.
+const sitemap = [];
+const writePage = (url, page) => {
+  sitemap.push(url);
+  write(path.join(decodeURIComponent(url), 'index.html'), layout({ ...page, url }));
+};
 
 const all = [...pages.values()];
 const byTitle = (a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' });
@@ -257,6 +265,7 @@ const noteItem = (p) =>
 
 // Contents for a note with two or more headings: h1 and h2 at the top level, h3 nested under them.
 // Long ones start collapsed, so the note itself stays near the top of the screen.
+// Only h2 entries are numbered, since only h2s are numbered in the note (see site.css).
 function toc(page) {
   const hs = page.headings;
   if (page.kind !== 'note' || hs.length < 2) return '';
@@ -267,7 +276,7 @@ function toc(page) {
     else top.push({ ...h, children: [] });
   }
   const items = top
-    .map((h) => `<li>${link(h)}${h.children.length ? `<ol>${h.children.map((c) => `<li>${link(c)}</li>`).join('')}</ol>` : ''}</li>`)
+    .map((h) => `<li${h.depth === 2 ? '' : ' class="unnumbered"'}>${link(h)}${h.children.length ? `<ol>${h.children.map((c) => `<li>${link(c)}</li>`).join('')}</ol>` : ''}</li>`)
     .join('');
   return `<nav class="toc" aria-label="Contents"><details${hs.length > 15 ? '' : ' open'}><summary>Contents</summary><ol>${items}</ol></details></nav>`;
 }
@@ -276,6 +285,15 @@ function backlinkList(page) {
   const from = [...(backlinks.get(page.file) ?? [])].map((f) => pages.get(f)).sort(byTitle);
   if (!from.length) return '';
   return `<aside class="backlinks"><h2>Backlinks</h2><ul>${from.map((p) => `<li><a href="${p.url}">${esc(p.title)}</a></li>`).join('')}</ul></aside>`;
+}
+
+// A page's meta description: its summary, or a line from what it has.
+function describe(p) {
+  const d = p.data;
+  if (d.summary) return d.summary;
+  if (p.kind === 'recipe') return [`A ${courseOf(p)} recipe`, ...recipeFacts(d)].join(' · ');
+  if (p.kind === 'note') return `A note in the notebook: ${p.title}.`;
+  return `Highlights from ${p.title}${d.author ? `, by ${d.author}` : ''}.`;
 }
 
 // Note, recipe, Readwise, and highlight pages.
@@ -300,7 +318,7 @@ for (const p of all) {
   }
   const contents = toc(p);
   const body = `<article class="${p.kind}"><header class="page-head">${head}</header>${contents}<div class="prose">${p.html}</div>${backlinkList(p)}</article>`;
-  writePage(p.url, layout({ title: p.title, section: sectionOf[p.kind], body, scripts: contents ? ['toc.js'] : [] }));
+  writePage(p.url, { title: p.title, description: describe(p), section: sectionOf[p.kind], body, scripts: contents ? ['toc.js'] : [] });
 }
 
 // Notes, A to Z, with a filter box.
@@ -314,7 +332,7 @@ const filterBox = (label) =>
 ${filterBox('Filter notes')}
 <nav class="az" aria-label="Jump to letter">${[...letters.keys()].map((l) => `<a href="#${letterId(l)}">${esc(l)}</a>`).join('')}</nav>
 ${[...letters].map(([letter, list]) => `<section data-group><h2 id="${letterId(letter)}">${esc(letter)}</h2><ul class="list">${list.map(noteItem).join('')}</ul></section>`).join('\n')}`;
-  writePage('/notes/', layout({ title: 'Notes', section: 'notes', body, scripts: ['filter.js'] }));
+  writePage('/notes/', { title: 'Notes', description: `All ${plural(notes.length, 'note')}, A to Z.`, section: 'notes', body, scripts: ['filter.js'] });
 }
 
 // Tags: an index, and one page per tag. Recipes have their own filters, so tags cover notes only.
@@ -334,10 +352,10 @@ ${[...letters].map(([letter, list]) => `<section data-group><h2 id="${letterId(l
   const body = `<h1>Tags</h1>${filterBox('Filter tags')}<ul class="tag-index" data-group>${tags
     .map((t) => `<li data-item data-text="${esc(t)}"><a href="${tagUrl(t)}">${esc(name(t))}</a> <span class="count">${tagged.get(t).length}</span></li>`)
     .join('')}</ul>`;
-  writePage('/tags/', layout({ title: 'Tags', section: 'notes', body, scripts: ['filter.js'] }));
+  writePage('/tags/', { title: 'Tags', description: 'Every tag on the notes, with a count of each.', section: 'notes', body, scripts: ['filter.js'] });
   for (const t of tags) {
     const list = tagged.get(t);
-    writePage(tagUrl(t), layout({ title: `Tag: ${name(t)}`, section: 'notes', body: `<p class="kicker"><a href="/tags/">Tags</a></p><h1>${esc(name(t))}</h1><p class="meta">${plural(list.length, 'note')}</p><ul class="list">${list.map(noteItem).join('')}</ul>` }));
+    writePage(tagUrl(t), { title: `Tag: ${name(t)}`, description: `${plural(list.length, 'note')} tagged ${name(t)}.`, section: 'notes', body: `<p class="kicker"><a href="/tags/">Tags</a></p><h1>${esc(name(t))}</h1><p class="meta">${plural(list.length, 'note')}</p><ul class="list">${list.map(noteItem).join('')}</ul>` });
   }
 }
 
@@ -366,7 +384,7 @@ ${[...letters].map(([letter, list]) => `<section data-group><h2 id="${letterId(l
 </form>
 <p class="none" hidden>No recipes match.</p>
 ${sections}`;
-  writePage('/recipes/', layout({ title: 'Recipes', section: 'recipes', body, scripts: ['filter.js'] }));
+  writePage('/recipes/', { title: 'Recipes', description: `${plural(recipes.length, 'recipe')} by course, filtered by tag, time, and effort.`, section: 'recipes', body, scripts: ['filter.js'] });
 }
 
 // Readwise, by category, and highlights, newest first.
@@ -376,22 +394,22 @@ ${sections}`;
   const item = (p) => `<li data-item data-text="${esc([p.title, p.data.author].join(' ').toLowerCase())}"><a href="${p.url}">${esc(p.title)}</a>${p.data.author ? `<p>${esc(p.data.author)}</p>` : ''}</li>`;
   const body = `<p class="kicker"><a href="/notes/">Notes</a></p><h1>${READWISE}</h1><p class="meta">${plural(readwise.length, 'source')}</p>${filterBox('Filter')}
 ${order.map((c) => `<section data-group><h2>${esc(c[0].toUpperCase() + c.slice(1))}</h2><ul class="list">${groups.get(c).map(item).join('')}</ul></section>`).join('\n')}`;
-  writePage('/readwise/', layout({ title: READWISE, section: 'notes', body, scripts: ['filter.js'] }));
+  writePage('/readwise/', { title: READWISE, description: `Highlights from ${plural(readwise.length, 'source')}, synced from Readwise.`, section: 'notes', body, scripts: ['filter.js'] });
   const hbody = `<p class="kicker"><a href="/notes/">Notes</a></p><h1>${OTHER}</h1><p class="meta">${plural(highlights.length, 'source')}, saved from articles, PDFs, and newsletters</p><ul class="list">${highlights
     .map((p) => `<li><a href="${p.url}">${esc(p.title)}</a><p>${esc([p.data.feed, p.data.published].filter(Boolean).join(' · '))}</p></li>`)
     .join('')}</ul>`;
-  writePage('/highlights/', layout({ title: OTHER, section: 'notes', body: hbody }));
+  writePage('/highlights/', { title: OTHER, description: `Highlights from ${plural(highlights.length, 'source')}, saved from articles, PDFs, and newsletters.`, section: 'notes', body: hbody });
 }
 
 // Home: search, the two sections, and recently updated notes.
 {
   const recent = notes.filter((p) => p.data.updated).sort((a, b) => b.data.updated.localeCompare(a.data.updated) || byTitle(a, b)).slice(0, 12);
   const intro = PUBLIC ? '<p class="lede">A demo notebook whose sample notes are also its docs. Start with <a href="/welcome/">Welcome</a>.</p>\n' : '';
-  const body = `${intro}<form class="search-form home" action="/search/"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" placeholder="Search notes and recipes"><button>Search</button></form>
-<nav class="sections"><a href="/notes/"><strong>Notes</strong><span>${plural(notes.length, 'note')}</span></a><a href="/recipes/"><strong>Recipes</strong><span>${plural(recipes.length, 'recipe')}</span></a><a href="/readwise/"><strong>${READWISE}</strong><span>${plural(readwise.length, 'source')}</span></a><a href="/highlights/"><strong>${OTHER}</strong><span>${plural(highlights.length, 'source')}</span></a></nav>
+  const body = `<h1 class="visually-hidden">Notebook</h1>${intro}<form class="search-form home" action="/search/"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" placeholder="Search notes and recipes"><button>Search</button></form>
+<nav class="sections" aria-label="Sections"><a href="/notes/"><strong>Notes</strong><span>${plural(notes.length, 'note')}</span></a><a href="/recipes/"><strong>Recipes</strong><span>${plural(recipes.length, 'recipe')}</span></a><a href="/readwise/"><strong>${READWISE}</strong><span>${plural(readwise.length, 'source')}</span></a><a href="/highlights/"><strong>${OTHER}</strong><span>${plural(highlights.length, 'source')}</span></a></nav>
 <h2>Recently updated</h2>
 <ul class="list">${recent.map(noteItem).join('')}</ul>`;
-  write('index.html', layout({ title: 'Notebook', section: '', body }));
+  writePage('/', { title: 'Notebook', description: PUBLIC ? 'A demo of a read-only website for a notebook of Markdown files.' : 'Notes, recipes, and highlights.', section: '', body });
 }
 
 // Search: the page, plus two indexes. Readwise and highlights load only when included.
@@ -421,10 +439,14 @@ ${order.map((c) => `<section data-group><h2>${esc(c[0].toUpperCase() + c.slice(1
 <p class="meta" data-status></p>
 <ol class="list results" data-results></ol>
 <noscript><p>Search needs JavaScript.</p></noscript>`;
-  writePage('/search/', layout({ title: 'Search', section: 'search', body, scripts: ['search.js'] }));
+  writePage('/search/', { title: 'Search', description: 'Search the notes, recipes, and highlights.', section: 'search', body, scripts: ['search.js'] });
 }
 
-write('404.html', layout({ title: 'Not found', section: '', body: '<h1>Not found</h1><p>No page here. Try <a href="/search/">search</a>.</p>' }));
+write('404.html', layout({ title: 'Not found', description: 'No page here.', section: '', body: '<h1>Not found</h1><p>No page here. Try <a href="/search/">search</a>.</p>' }));
+if (PUBLIC) {
+  const urls = sitemap.map((u) => `<url><loc>${esc(SITE_URL + u)}</loc></url>`).join('\n');
+  write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
+}
 
 // Static files, the shared search scoring, and attachments that pages link to.
 fs.cpSync(path.join(SITE, 'static'), path.join(OUT, 'static'), { recursive: true });
