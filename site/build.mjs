@@ -96,10 +96,14 @@ const slug = (s) => unesc(s.replace(/<[^>]*>/g, '')).toLowerCase().replace(/[^\p
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // The demo's pages get a canonical link; a page without a url (the 404) gets none.
-function layout({ title, description, url, section, body, scripts = [] }) {
+function layout({ title, description, url, section, up: parent, body, scripts = [] }) {
   const nav = [['notes', 'Notes'], ['recipes', 'Recipes'], ['search', 'Search']]
     .map(([key, label]) => `<a href="/${key}/"${section === key ? ' aria-current="page"' : ''}>${label}</a>`)
     .join('');
+  // A back button for phones, where the site may run as a home-screen app with no browser bar.
+  // Without JavaScript, or with nothing to go back to, it goes up to the section, or home.
+  const up = parent ?? (!section || url === `/${section}/` ? '/' : `/${section}/`);
+  const back = url === '/' ? '' : `<a class="back" href="${up}">Back</a>`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -117,11 +121,11 @@ ${PUBLIC ? `<meta name="author" content="${AUTHOR}">\n<link rel="author" href="$
 <meta name="apple-mobile-web-app-title" content="Notebook">
 </head>
 <body>
-<header class="top"><a class="brand" href="/">Notebook</a><nav aria-label="Site">${nav}</nav></header>
+<header class="top">${back}<a class="brand" href="/">Notebook</a><nav aria-label="Site">${nav}</nav></header>
 <main>
 ${body}
 </main>
-${PUBLIC ? `<footer class="site-foot"><p>Made by <a href="${AUTHOR_URL}">${AUTHOR}</a>. A demo built from sample notes, which are also the docs. <a href="${REPO}" rel="noreferrer">Code on GitHub</a>.</p></footer>\n` : ''}${scripts.map((s) => `<script type="module" src="${asset(s)}"></script>`).join('\n')}
+${PUBLIC ? `<footer class="site-foot"><p>Made by <a href="${AUTHOR_URL}">${AUTHOR}</a>. A demo built from sample notes, which are also the docs. <a href="${REPO}" rel="noreferrer">Code on GitHub</a>.</p></footer>\n` : ''}${['back.js', ...scripts].map((s) => `<script type="module" src="${asset(s)}"></script>`).join('\n')}
 </body>
 </html>
 `;
@@ -279,6 +283,8 @@ const readwise = all.filter((p) => p.kind === 'readwise').sort(byTitle);
 const highlights = all.filter((p) => p.kind === 'highlight').sort((a, b) => String(b.data.published ?? '').localeCompare(String(a.data.published ?? '')));
 const courseOf = (p) => p.id.split('/')[1];
 const sectionOf = { note: 'notes', recipe: 'recipes', readwise: 'notes', highlight: 'notes' };
+// Where Back goes with no history: the list a page belongs to, when that isn't its section's index.
+const upOf = { readwise: '/readwise/', highlight: '/highlights/' };
 
 const noteItem = (p) =>
   `<li data-item data-text="${esc([p.title, ...p.data.aliases, ...p.data.tags].join(' ').toLowerCase())}"><a href="${p.url}">${esc(p.title)}</a>${p.data.summary ? `<p>${esc(p.data.summary)}</p>` : ''}</li>`;
@@ -338,7 +344,7 @@ for (const p of all) {
   }
   const contents = toc(p);
   const body = `<article class="${p.kind}"><header class="page-head">${head}</header>${contents}<div class="prose">${p.html}</div>${backlinkList(p)}</article>`;
-  writePage(p.url, { title: p.title, description: describe(p), section: sectionOf[p.kind], body, scripts: contents ? ['toc.js'] : [] });
+  writePage(p.url, { title: p.title, description: describe(p), section: sectionOf[p.kind], up: upOf[p.kind], body, scripts: contents ? ['toc.js'] : [] });
 }
 
 // Notes, A to Z, with a filter box.
@@ -375,7 +381,7 @@ ${[...letters].map(([letter, list]) => `<section data-group><h2 id="${letterId(l
   writePage('/tags/', { title: 'Tags', description: 'Every tag on the notes, with a count of each.', section: 'notes', body, scripts: ['filter.js'] });
   for (const t of tags) {
     const list = tagged.get(t);
-    writePage(tagUrl(t), { title: `Tag: ${name(t)}`, description: `${plural(list.length, 'note')} tagged ${name(t)}.`, section: 'notes', body: `<p class="kicker"><a href="/tags/">Tags</a></p><h1>${esc(name(t))}</h1><p class="meta">${plural(list.length, 'note')}</p><ul class="list">${list.map(noteItem).join('')}</ul>` });
+    writePage(tagUrl(t), { title: `Tag: ${name(t)}`, description: `${plural(list.length, 'note')} tagged ${name(t)}.`, section: 'notes', up: '/tags/', body: `<p class="kicker"><a href="/tags/">Tags</a></p><h1>${esc(name(t))}</h1><p class="meta">${plural(list.length, 'note')}</p><ul class="list">${list.map(noteItem).join('')}</ul>` });
   }
 }
 

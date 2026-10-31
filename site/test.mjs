@@ -105,6 +105,13 @@ test('notes with two or more headings get contents, with h3 nested under h2', ()
   assert.match(s.page('mixed'), /<ol><li><a href="#first">First<\/a><\/li><li class="unnumbered"><a href="#part">Part<\/a><\/li><li><a href="#second">Second<\/a><\/li><\/ol>/, 'only h2 entries are numbered, like the note');
   assert.doesNotMatch(s.page('short'), /class="toc"|toc.js/);
   assert.doesNotMatch(s.page('recipes/soups/zuppa'), /class="toc"/, 'recipes get none');
+  assert.match(s.page('long'), /<a class="back" href="\/notes\/">Back<\/a>/, 'back falls back to the section');
+  assert.match(s.page('recipes/soups/zuppa'), /<a class="back" href="\/recipes\/">/);
+  assert.match(s.page('notes'), /<a class="back" href="\/">/, 'a section page goes up to home');
+  assert.doesNotMatch(s.page(''), /class="back"/, 'home has none');
+  assert.match(s.page('long'), /src="\/static\/back.js\?v=[0-9a-f]{10}"/);
+  assert.match(s.page('tags'), /<a class="back" href="\/notes\/">/);
+  assert.match(s.page('tags/test'), /<a class="back" href="\/tags\/">/, 'a tag page goes up to the tag list');
   s.cleanup();
 });
 
