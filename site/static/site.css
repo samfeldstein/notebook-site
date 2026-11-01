@@ -319,6 +319,8 @@ sub {
   .top {
     flex-wrap: wrap;
     padding-inline: 0;
+    /* The iOS status bar blurs whatever sits under it; a bright rule there smears into a haze. */
+    border-top: 0;
   }
 
   .brand {
