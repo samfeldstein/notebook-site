@@ -121,6 +121,7 @@ ${PUBLIC ? `<meta name="author" content="${AUTHOR}">\n<link rel="author" href="$
 <meta name="apple-mobile-web-app-title" content="Notebook">
 </head>
 <body>
+<div class="edge" aria-hidden="true"></div>
 <header class="top">${back}<a class="brand" href="/">Notebook</a><nav aria-label="Site">${nav}</nav></header>
 <main>
 ${body}

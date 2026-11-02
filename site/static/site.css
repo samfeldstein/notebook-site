@@ -258,6 +258,23 @@ sub {
   line-height: 0;
 }
 
+/* Phones only: a solid strip pinned to the top. iOS 26 blurs the top edge of a home-screen app
+   unless a full-width, opaque, fixed box sits there, and then it uses that box's color. */
+.edge {
+  display: none;
+}
+
+@media (max-width: 40em) {
+  .edge {
+    display: block;
+    position: fixed;
+    inset: 0 0 auto;
+    height: 12px;
+    background: var(--bg);
+    z-index: 10;
+  }
+}
+
 /* Header: the printed strip at the top of every sheet, with tabs. It lines up with the page's
    text column, at every width. */
 .top {
