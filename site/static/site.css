@@ -924,6 +924,7 @@ label {
 
 /* Footnote reference numbers are small; give them a bigger tap area. */
 .prose sup a {
+  font-size: 0.75em;
   padding: var(--sp-1);
 }
 
